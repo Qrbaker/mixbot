@@ -40,3 +40,7 @@ Thumbs.db
 #############
 venv/
 .idea/
+
+# config files (may contain sensitive info) #
+#############################################
+conf.ini

@@ -1,9 +1,6 @@
 """Flair bot, extended to use the Mixer REST API to verify if a requesting user is a partner on mixer."""
-import sys
-import os
-import re
-import codecs
-import csv
+import sys, os, re, codecs, csv
+
 from time import gmtime, strftime
 import praw
 
@@ -23,11 +20,13 @@ class PartnerFlairBot:
     def __init__(self):
         """Initial setup."""
         self.msgs_read = 0
-
         try:
-            if sys.argv[1] == '-q' or '-quiet':
-                self.debug = False
-        except IndexError:
+            for arg in sys.argv:
+                if arg == '-q' or arg == '--quiet':
+                    self.debug = False
+                else:
+                    self.debug = True
+        except IndexError:  # Error will be raised if no args are passed in
             self.debug = True
 
         self.conf = ConfigParser()
@@ -192,8 +191,7 @@ class PartnerFlairBot:
         self.msgs_read += 1
         msg.mark_read()
 
-    @staticmethod
-    def partner_verified(mixer_name):
+    def partner_verified(self, mixer_name):
         """Checks with Mixer.com to see if the supplied user is a partner."""
         # Mixer API - Partnered REST Response
         s = requests.session()
@@ -209,8 +207,7 @@ class PartnerFlairBot:
         else:
             return False
 
-    @staticmethod
-    def log(user, text, cls, approved):
+    def log(self, user, text, cls, approved):
         """Log applied flairs to file."""
 
         with codecs.open('log.txt', 'a', 'utf-8') as logfile:
