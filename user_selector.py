@@ -75,7 +75,7 @@ class CommentSelectorBot:
         self.user_list = self.get_users_from_thread(self.post_url)
         self.winners = self.pick_winners_from_list(self.user_list, self.pick_num)
 
-        self.message_winner_list("seminal_sound", self.winners)
+        self.message_winner_list("doinkmahoojik", self.winners)
 
     def login(self):
         """Log in via script/web app."""
@@ -140,7 +140,7 @@ class CommentSelectorBot:
                 if self.debug:
                     print("Skipping %s, they have already won previously..." % comment.author.name)
                 continue
-            redditors.append(comment.author)
+            redditors.append(comment)
             if self.debug:
                 print('Added %s to pool' % comment.author)
         if self.debug:
@@ -158,14 +158,14 @@ class CommentSelectorBot:
         if self.debug:
             print('Selected winners this run:')
             for v in winners:
-                print("\t%s" % v.name)
+                print("\t%s" % v.author.name)
         return winners
 
     def message_winner_list(self, recipient, winner_list):
         nice_win_str = ""
-        for winner in winner_list:
-            nice_win_str += "- " + winner.name + "  \n"
-        self.reddit.redditor(recipient).message('Winner selections!',
+        for winner_comment in winner_list:
+            nice_win_str += "- [" + winner_comment.author.name + "](" + winner_comment.permalink + ")  \n"
+        self.reddit.subreddit(recipient).message('Winner selections!',
                                                 'Here are the winner selections from the thread "[%s](%s)":  \n%s'
                                                 % (self.submission.title, self.post_url, nice_win_str))
 CommentSelectorBot()
