@@ -20,6 +20,7 @@ class CommentSelectorBot:
     def __init__(self):
         """Initializer"""
         self.debug = True
+        self.remove_post = False
         self.post_url = ''
         self.pick_num = 1
         if self.debug:
@@ -43,6 +44,8 @@ class CommentSelectorBot:
                         if self.debug:
                             print("Could not case %s to int." % arg, file=sys.stderr)
                         self.pick_num = 1
+                if arg == '-r' or arg == '--remove':
+                    self.remove_post = True
 
         except IndexError:  # Error will be raised if no args are passed in
             print('No args provided! You must include at least one argument, the post url.', file=sys.stderr)
@@ -51,6 +54,7 @@ class CommentSelectorBot:
         self.conf = ConfigParser()
 
         self.reddit = None
+        self.submission = None
 
         os.chdir(sys.path[0])
         if os.path.exists('conf.ini'):
@@ -76,6 +80,12 @@ class CommentSelectorBot:
         self.winners = self.pick_winners_from_list(self.user_list, self.pick_num)
 
         self.message_winner_list("doinkmahoojik", self.winners)
+
+        if self.remove_post:
+            self.remove_submission(self.submission)
+
+    def get_submission_from_url(self, submission_url):
+        return self.reddit.submission(url=thread_url)
 
     def login(self):
         """Log in via script/web app."""
@@ -150,6 +160,12 @@ class CommentSelectorBot:
 
     def pick_winners_from_list(self, name_list, num_of_winners=1):
         """Given a list of strings, pick `n` winners from list."""
+        if num_of_winners > len(name_list):
+            if self.debug:
+                print('More winners asked for than people entered!\nReturning all entrants...')
+            # If we want to select more winners than people entered, just return everyone.
+            return name_list
+
         winners = []
         for i in range(num_of_winners):
             new_winner = secrets.choice(name_list)
@@ -168,4 +184,18 @@ class CommentSelectorBot:
         self.reddit.subreddit(recipient).message('Winner selections!',
                                                 'Here are the winner selections from the thread "[%s](%s)":  \n%s'
                                                 % (self.submission.title, self.post_url, nice_win_str))
+
+    def remove_submission(self, submission):
+        if not submission:
+            if self.debug:
+                print("Error: Called `remove_submission` with null argument.", file=sys.stderr)
+        submission.mod.sticky(state=False)
+        submission.mod.lock() # Prevent addtl. comments
+        selected_note = submission.reply("We have selected a winner, and will announce them in the next Featured "
+                                         "Streamer post. Thanks to everyone who entered!\n\n"
+                                         "*This comment was made by an automated bot. If you have questions, please "
+                                         "[contact the r/mixer moderation team.]"
+                                         "(http://www.reddit.com/message/compose?to=/r/mixer&message={url})*")
+        selected_note.mod.distinguish(how='yes', sticky=True)
+
 CommentSelectorBot()
