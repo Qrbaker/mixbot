@@ -7,6 +7,10 @@ import secrets
 # Python Reddit Api Wrapper (P.R.A.W)
 import praw
 
+# Tkinter lib for GUI
+import tkinter as tk
+import tkinter.scrolledtext as tkscroll
+
 try:
     from configparser import ConfigParser
 except ImportError:
@@ -17,44 +21,22 @@ except ImportError:
 class CommentSelectorBot:
     """Comment Selection Bot."""
 
-    def __init__(self):
+    def __init__(self, url, capture_output=False, capture_field=None, debug=True, remove=True, winners=1):
         """Initializer"""
-        self.debug = True
-        self.remove_post = False
-        self.post_url = ''
-        self.pick_num = 1
-        if self.debug:
-            print('found %i arguments' % len(sys.argv))
-        try:
-            for i, arg in enumerate(sys.argv):
-                if self.debug:
-                    print(arg)
-                if arg == '-q' or arg == '--quiet':
-                    self.debug = False
-                if arg == '-u' or arg == '--url':
-                    try:
-                        self.post_url = sys.argv[i+1]
-                    except IndexError:
-                        if self.debug:
-                            print("hit end of args.")
-                if arg == '-n' or arg == '--number':
-                    try:
-                        self.pick_num = int(sys.argv[i+1])
-                    except ValueError:
-                        if self.debug:
-                            print("Could not case %s to int." % arg, file=sys.stderr)
-                        self.pick_num = 1
-                if arg == '-r' or arg == '--remove':
-                    self.remove_post = True
-
-        except IndexError:  # Error will be raised if no args are passed in
-            print('No args provided! You must include at least one argument, the post url.', file=sys.stderr)
-            exit(-1)
+        self.debug = debug
+        self.remove_post = remove
+        self.post_url = url
+        self.pick_num = winners
+        self.console = capture_field
 
         self.conf = ConfigParser()
 
         self.reddit = None
         self.submission = None
+
+        if capture_output:
+            sys.stdout = TextRedirector(self.console, "stdout")
+            sys.stderr = TextRedirector(self.console, "stderr")
 
         os.chdir(sys.path[0])
         if os.path.exists('conf.ini'):
@@ -182,15 +164,15 @@ class CommentSelectorBot:
         for winner_comment in winner_list:
             nice_win_str += "- [" + winner_comment.author.name + "](" + winner_comment.permalink + ")  \n"
         self.reddit.subreddit(recipient).message('Winner selections!',
-                                                'Here are the winner selections from the thread "[%s](%s)":  \n%s'
-                                                % (self.submission.title, self.post_url, nice_win_str))
+                                                 'Here are the winner selections from the thread "[%s](%s)":  \n%s'
+                                                 % (self.submission.title, self.post_url, nice_win_str))
 
     def remove_submission(self, submission):
         if not submission:
             if self.debug:
                 print("Error: Called `remove_submission` with null argument.", file=sys.stderr)
         submission.mod.sticky(state=False)
-        submission.mod.lock() # Prevent addtl. comments
+        submission.mod.lock()  # Prevent addtl. comments
         selected_note = submission.reply("We have selected a winner, and will announce them in the next Featured "
                                          "Streamer post. Thanks to everyone who entered!\n\n"
                                          "*This comment was made by an automated bot. If you have questions, please "
@@ -198,4 +180,61 @@ class CommentSelectorBot:
                                          "(http://www.reddit.com/message/compose?to=/r/mixer&message={url})*")
         selected_note.mod.distinguish(how='yes', sticky=True)
 
-CommentSelectorBot()
+
+# Class used to capture console and print it in the GUI
+# from https://stackoverflow.com/questions/12351786/how-to-redirect-print-statements-to-tkinter-text-widget
+class TextRedirector(object):
+    def __init__(self, widget, tag="stdout"):
+        self.widget = widget
+        self.tag = tag
+        self.errtext = False
+
+    def write(self, str):
+        self.widget.configure(state="normal")
+        self.widget.insert(tk.END, str, (self.tag,))
+        self.widget.configure(state="disabled")
+
+
+root = tk.Tk()
+root.title("Selector Bot 3000")
+root.resizable(False, False)
+root.geometry('400x400')
+
+# TK Variables
+rem_var = tk.BooleanVar()
+
+
+def selector_bot_callback():
+    selector = CommentSelectorBot(capture_output=True, capture_field=console_output, url=post_url_entry.get(), remove=rem_var.get(),
+                                  winners=int(winner_select.get()))
+
+
+url_frame = tk.Frame(root)
+url_frame.pack()
+
+winner_num_frame = tk.Frame(root)
+winner_num_frame.pack(fill=tk.X)
+
+post_url_label = tk.Label(url_frame, text="Post URL")
+post_url_entry = tk.Entry(url_frame, relief=tk.GROOVE, width=40)
+
+winner_select_label = tk.Label(winner_num_frame, text="Number of Winners")
+winner_select = tk.Spinbox(winner_num_frame, from_=0, to=20, width=5)
+
+C1 = tk.Checkbutton(root, text="Unsticky After Selecting", variable=rem_var)
+
+do_the_thing_button = tk.Button(root, text="Run Selector", command=selector_bot_callback)
+
+console_output = tkscroll.ScrolledText(root, font=("Courier", 8))
+
+# Pack everything
+C1.pack()
+winner_select_label.pack(side=tk.LEFT)
+winner_select.pack(side=tk.RIGHT)
+post_url_label.pack(side=tk.LEFT)
+post_url_entry.pack(side=tk.RIGHT)
+do_the_thing_button.pack()
+console_output.pack()
+# Widgets go here...
+root.mainloop()
+root.destroy()
