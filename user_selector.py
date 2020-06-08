@@ -61,7 +61,7 @@ class CommentSelectorBot:
         self.user_list = self.get_users_from_thread(self.post_url)
         self.winners = self.pick_winners_from_list(self.user_list, self.pick_num)
 
-        self.message_winner_list("doinkmahoojik", self.winners)
+        self.message_winner_list("mixer", self.winners)
 
         if self.remove_post:
             self.remove_submission(self.submission)
